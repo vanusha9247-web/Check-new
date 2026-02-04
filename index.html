@@ -1,0 +1,224 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sai's Birthday Protocol</title>
+    <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.5.1/dist/confetti.browser.min.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@700&family=Fredoka+One&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --primary: #00d4ff; 
+            --secondary: #ffcc00; 
+            --correct: #39ff14; 
+            --wrong: #ff3131;
+            --bg: #0b0e14;
+            --card: #1a202c;
+        }
+
+        body {
+            font-family: 'Fredoka One', cursive;
+            background-color: var(--bg);
+            background-image: linear-gradient(rgba(0, 212, 255, 0.05) 1px, transparent 1px), 
+                              linear-gradient(90deg, rgba(0, 212, 255, 0.05) 1px, transparent 1px);
+            background-size: 30px 30px;
+            margin: 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            overflow: hidden;
+            color: #fff;
+        }
+
+        #game-container {
+            background: var(--card);
+            padding: 2.5rem;
+            border-radius: 20px;
+            box-shadow: 0 0 50px rgba(0, 212, 255, 0.2);
+            text-align: center;
+            max-width: 90%;
+            width: 520px;
+            border: 3px solid var(--primary);
+            position: relative;
+        }
+
+        h1 { font-family: 'Orbitron', sans-serif; color: var(--secondary); text-shadow: 2px 2px #ff007a; margin: 0; letter-spacing: 2px; }
+        .clue { font-size: 1.1rem; color: #cbd5e0; margin: 25px 0; min-height: 60px; line-height: 1.4; }
+        .answer-container { display: flex; flex-wrap: wrap; justify-content: center; gap: 8px; margin-bottom: 30px; }
+
+        .letter-box {
+            width: 38px; height: 50px; border: 2px solid #4a5568; border-radius: 8px;
+            font-size: 1.6rem; text-transform: uppercase; text-align: center;
+            background: #0b0e14; color: white; outline: none;
+        }
+
+        .letter-box.correct { border-color: var(--correct) !important; color: var(--correct) !important; box-shadow: 0 0 15px var(--correct); }
+        .letter-box.wrong { border-color: var(--wrong) !important; color: var(--wrong) !important; box-shadow: 0 0 15px var(--wrong); animation: shake 0.3s; }
+
+        @keyframes shake { 0%, 100% { transform: translateX(0); } 25% { transform: translateX(-5px); } 75% { transform: translateX(5px); } }
+
+        .btn-group { display: flex; justify-content: center; gap: 15px; }
+        button { padding: 12px 22px; border: none; border-radius: 12px; font-family: 'Orbitron'; cursor: pointer; font-weight: bold; text-transform: uppercase; transition: 0.2s; }
+        .main-btn { background: var(--primary); color: #000; box-shadow: 0 4px 0 #008eb3; }
+        .hint-btn { background: var(--secondary); color: #000; box-shadow: 0 4px 0 #b38f00; }
+        .skip-btn { background: #2d3748; color: #a0aec0; }
+
+        .overlay {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0, 0, 0, 0.92); display: none; justify-content: center; align-items: center; z-index: 1000;
+        }
+        .popup { background: var(--card); padding: 2.5rem; border-radius: 25px; text-align: center; border: 3px solid var(--primary); width: 85%; max-width: 450px; }
+    </style>
+</head>
+<body>
+
+<div id="game-container">
+    <div style="font-size: 3.5rem; margin-bottom: 10px;">🎲</div>
+    <h1>SAI'S B-DAY QUEST</h1>
+    <p id="clue-text" class="clue">Press Begin to start your birthday mission, Sai!</p>
+    <div id="answer-slots" class="answer-container"></div>
+    <div class="btn-group">
+        <button id="main-btn" class="main-btn" onclick="handleMainAction()">Begin</button>
+        <button id="hint-btn" class="hint-btn" style="display:none" onclick="showHint()">Hint ✨</button>
+        <button id="skip-btn" class="skip-btn" style="display:none" onclick="fakeSkip()">Skip</button>
+    </div>
+</div>
+
+<div id="overlay" class="overlay">
+    <div class="popup">
+        <h1 id="pop-title" style="font-size: 1.6rem; color: var(--secondary); margin-bottom: 10px;">TITLE</h1>
+        <h1 id="pop-emoji" style="font-size: 3rem; margin: 0;">🎁</h1>
+        <p id="pop-msg" style="font-size: 1.15rem; margin: 20px 0; color: #fff; line-height: 1.6;"></p>
+        <button class="main-btn" onclick="closePopup()">Got it! 🚀</button>
+    </div>
+</div>
+
+<script>
+    const questions = [
+        { q: "The reason my bad days don’t last long", a: "YOU", hintTitle: "SAI'S SECRET 🤫", hintMsg: "A 3-letter word for the person I love most!", header: "MY SUNSHINE ☀️", correctMsg: "Because you're my sunshine, Sai!", theme: 'sun' },
+        { q: "Our favorite way to spend time together", a: "LONG TALKS", hintTitle: "SPOILER ALERT 🎀", hintMsg: "We do this for hours and never get tired...", header: "CHITCHAT CHAMP 💬", correctMsg: "I could listen to you forever...", theme: 'tech' },
+        { q: "The trip that changed everything for us", a: "CATALINA ISLAND", hintTitle: "VACATION VIBES 🏖️", hintMsg: "Think of boats, golf carts, and blue water!", header: "SMOOTH SAILING 🌊", correctMsg: "Those memories are locked in my heart!", theme: 'ocean' },
+        { q: "The nickname only I use for you", a: "SUBBU", hintTitle: "SWEET NAME 🍭", hintMsg: "It starts with S and ends with U!", header: "MY FAVORITE NAME 🥰", correctMsg: "My one and only Subbu!", theme: 'love' },
+        { q: "Your favorite comfort food", a: "SAMBAR", hintTitle: "HUNGRY HINT 😋", hintMsg: "South Indian soul food!", header: "YUMMY TUMMY 🍲", correctMsg: "You spice up my life perfectly!", theme: 'spice' },
+        { q: "What you do when you’re stressed", a: "SILENCE", hintTitle: "SHHH... 🤫", hintMsg: "You get very, very quiet...", header: "QUIET TIME 🤍", correctMsg: "I'm here for you, even in the quiet.", theme: 'quiet' },
+        { q: "What I see when I imagine my future", a: "US", hintTitle: "DREAMING BIG ☁️", hintMsg: "Just two letters, you and me.", header: "BETTER TOGETHER 💍", correctMsg: "Always and forever, Sai.", theme: 'future' },
+        { q: "The best decision of my life", a: "MARRYING YOU", hintTitle: "BEST MEMORY 📸", hintMsg: "The day we said 'I Do'!", header: "BEST DAY EVER ✨", correctMsg: "Best decision I ever made!", theme: 'tech' },
+        { q: "What you do when I’m upset", a: "LISTEN", hintTitle: "SAFE HAVEN ⚓", hintMsg: "You give me your full attention.", header: "MY SAFE PLACE 👂💗", correctMsg: "You're my safest place to land.", theme: 'tech' },
+        { q: "What you give when I need it most", a: "TIME", hintTitle: "GOLDEN HINT 🌟", hintMsg: "You can't buy it, but you always give it to me.", header: "PRECIOUS GIFT ⏳", correctMsg: "Every second with you is a gift.", theme: 'gold' },
+        { q: "Your way of saying “I care”", a: "ACTIONS", hintTitle: "TRUE LOVE 🛠️", hintMsg: "They speak louder than words!", header: "LOVE IN ACTION 🛠️", correctMsg: "You show me love in everything you do.", theme: 'tech' },
+        { q: "The answer that connects everything", a: "LOVE", hintTitle: "THE BIG ONE 💖", hintMsg: "The strongest force between us.", header: "MISSION COMPLETE ❤️", correctMsg: "Happy Birthday, Sai! I love you!", theme: 'final' }
+    ];
+
+    const skipData = [
+        { title: "NICE TRY! 😂", msg: "No skipping allowed for the birthday boy! 😤", emoji: "🏃‍♂️" },
+        { title: "STOP RIGHT THERE! 🛑", msg: "Wait! The next one is your favorite! 🎀", emoji: "🚧" },
+        { title: "I SEE YOU... 👀", msg: "I put so much love into this, don't skip! 🥺", emoji: "💖" },
+        { title: "ACCESS DENIED 🙅‍♂️", msg: "Nice try, Sai! No skipping the love! 😂", emoji: "🚫" }
+    ];
+
+    let currentQ = 0; let isGameActive = false;
+
+    function handleMainAction() {
+        if (!isGameActive) {
+            isGameActive = true; document.getElementById('main-btn').innerText = "Submit";
+            document.getElementById('hint-btn').style.display = "block"; document.getElementById('skip-btn').style.display = "block";
+            loadQuestion();
+        } else { checkFinal(); }
+    }
+
+    function loadQuestion() {
+        const q = questions[currentQ]; document.getElementById('clue-text').innerText = q.q;
+        const container = document.getElementById('answer-slots'); container.innerHTML = '';
+        q.a.split('').forEach((char) => {
+            if (char === ' ') { let space = document.createElement('div'); space.style.width = '100%'; container.appendChild(space); }
+            else {
+                let input = document.createElement('input'); input.className = 'letter-box'; input.maxLength = 1; input.dataset.char = char;
+                input.oninput = (e) => {
+                    if (e.target.value.toUpperCase() === char) {
+                        e.target.className = 'letter-box correct';
+                        let next = e.target.nextElementSibling; while(next && next.tagName !== 'INPUT') next = next.nextElementSibling;
+                        if(next) next.focus();
+                    } else if (e.target.value !== "") { 
+                        e.target.className = 'letter-box wrong'; 
+                        setTimeout(() => { e.target.value = ""; e.target.className = 'letter-box'; }, 400); 
+                    }
+                }; container.appendChild(input);
+            }
+        });
+    }
+
+    function triggerAnimation(theme) {
+        if (theme === 'sun') confetti({ particleCount: 100, spread: 90, colors: ['#ffcc00', '#ffffff'], shapes: ['star'] });
+        else if (theme === 'ocean') confetti({ particleCount: 150, spread: 70, colors: ['#00d4ff', '#0077be'] });
+        else if (theme === 'spice') confetti({ particleCount: 100, spread: 60, colors: ['#ff4500', '#ffcc00'] });
+        else if (theme === 'love' || theme === 'final') confetti({ particleCount: 200, spread: 100, origin: { y: 0.6 }, colors: ['#ff007a', '#ffcc00', '#ffffff'] });
+        else confetti({ particleCount: 100, spread: 70, colors: ['#00d4ff', '#39ff14'] });
+    }
+
+    function checkFinal() {
+        if (Array.from(document.querySelectorAll('.letter-box')).every(b => b.classList.contains('correct'))) {
+            const q = questions[currentQ];
+            triggerAnimation(q.theme);
+            document.getElementById('pop-title').innerText = q.header;
+            document.getElementById('pop-emoji').innerText = "💖";
+            document.getElementById('pop-msg').innerText = q.correctMsg;
+            document.getElementById('overlay').style.display = 'flex'; window.isNextLevel = true;
+        } else {
+            alert("Oops! Not quite right. Try again, Sai! ❤️");
+        }
+    }
+
+    function fakeSkip() { 
+        const skip = skipData[Math.floor(Math.random()*skipData.length)];
+        document.getElementById('pop-title').innerText = skip.title;
+        document.getElementById('pop-emoji').innerText = skip.emoji; 
+        document.getElementById('pop-msg').innerText = skip.msg;
+        document.getElementById('overlay').style.display = 'flex'; 
+    }
+
+    function showHint() { 
+        const q = questions[currentQ];
+        document.getElementById('pop-title').innerText = q.hintTitle;
+        document.getElementById('pop-emoji').innerText = "💡"; 
+        document.getElementById('pop-msg').innerText = q.hintMsg;
+        document.getElementById('overlay').style.display = 'flex'; window.pendingHint = true; 
+    }
+
+    function closePopup() {
+        document.getElementById('overlay').style.display = 'none';
+        if (window.pendingHint) {
+            let boxes = document.querySelectorAll('.letter-box:not(.correct)');
+            if (boxes.length > 0) { boxes[0].value = boxes[0].dataset.char; boxes[0].className = 'letter-box correct'; }
+            window.pendingHint = false;
+        }
+        if (window.isNextLevel) {
+            window.isNextLevel = false; currentQ++;
+            if (currentQ < questions.length) loadQuestion();
+            else showFinalMessage();
+        }
+    }
+
+    function showFinalMessage() {
+        let duration = 6 * 1000; let animationEnd = Date.now() + duration;
+        let interval = setInterval(function() {
+            let timeLeft = animationEnd - Date.now();
+            if (timeLeft <= 0) return clearInterval(interval);
+            confetti({ particleCount: 40, startVelocity: 30, spread: 360, origin: { x: Math.random(), y: Math.random() - 0.2 }, colors: ['#ff0000', '#00ff00', '#0000ff', '#ffff00', '#ff00ff', '#00ffff'] });
+        }, 200);
+
+        document.getElementById('game-container').innerHTML = `
+            <div style="font-size: 5rem;">🎈🎁🎈</div>
+            <h1 style="font-size: 2.2rem; color: var(--secondary);">YOU DID IT, SAI!</h1>
+            <p style="font-size: 1.25rem; margin: 20px 0; line-height: 1.6;">
+                You've completed your quest and unlocked my whole heart!<br><br>
+                You're an amazing husband, my best friend, and my greatest adventure. 
+                Every day with you is a gift. I hope your birthday is as wonderful as you are!<br><br>
+                <b>I love you! ❤️</b>
+            </p>
+            <div style="font-size: 3.5rem;">🏎️🎂🧩</div>
+        `;
+    }
+</script>
+</body>
+</html>
